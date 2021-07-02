@@ -179,6 +179,29 @@ SG: @Ralf?
 
 ----
 
+Migration Feedback
+==================
+
+- Several Pythran releases have been requested to fix distutils integration
+  - native code + multiple platform = <3
+- Portability issues on AIX
+- Windows's extra requirements: clang-cl
+
+----
+
+GSoC Student: Xingyu-Liu
+------------------------
+
+Crawling in Scipy's code base, looking for kernel to benchmark and convert
+
+Read the log of her journey:
+
+https://blogs.python-gsoc.org/en/xingyu-lius-blog/
+
+
+
+----
+
 Discussion
 ==========
 
