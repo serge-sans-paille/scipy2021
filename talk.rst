@@ -17,11 +17,13 @@ Ralf Gommers & Serge Guelton
 A packager's choice
 ===================
 
->>> performant library
-<<< easy to deploy
+::
 
---- native code
-+++ compatible with PyPI
+    >>> performant library
+    <<< easy to deploy
+
+    --- native code
+    +++ compatible with PyPI
 
 ----
 
@@ -31,6 +33,14 @@ How SciPy is Built
 .. image:: SciPy_build_dependency_graph_with_Pythran.png
     :height: 600px
 
+..
+  RG: I want to talk here about build-time vs. runtime dependencies. It depends
+  on where you are in the stack. The lower you go, the more you want to avoid
+  runtime dependencies. On the other hand, if you go up in the stack to
+  packages that do not yet have build-time dependencies, adding Pythran (or
+  Cython) is very costly - that is where Numba makes sense (e.g. ship a single
+  pure Python wheel vs. needing to ship ~20).
+
 ----
 
 How SciPy is Written
@@ -38,7 +48,8 @@ How SciPy is Written
 
 - ``.py``: for the glue, and non critical parts
 - ``.pyx``: for critical parts
-- ``.cpp``: for ultra critical parts :-)
+- ``.f77``: for very old critical parts
+- ``.c`` /``.cpp``: for ultra critical parts :-)
 
 ----
 
@@ -50,7 +61,7 @@ Looking for a tool which:
 - takes pure Python code as input
 - understands NumPy high-level constructs
 - delivers performance
-- without many runtime dependencies
+- without (m)any runtime dependencies
 
 ----
 
@@ -65,6 +76,12 @@ Cython is a **great** tool
 
 - but still has a non-negligible learning curve
 - tends to be closer to C than Python when performance matters
+
+
+..
+  @SG we should mention Numba. How about reusing the table from
+  https://fluiddyn.netlify.app/transonic-vision.html#Overall-comparison-between-Cython,-Numba-and-Pythran
+  ?
 
 ----
 
@@ -157,37 +174,68 @@ Distutils Playground
           ext_modules=[PythranExtension("mymodule", ["mymodule.py"])],
           cmdclass={"build_ext": PythranBuildExt})
 
+..
+  RG: if we leave this in, I will want to mention Meson:)
+
 ----
 
 Benefits for SciPy
-===================
+==================
 
-SG: @Ralf?
+Key benefit: **easiest way to write fast kernels**
 
+- Developer experience almost as good as with Numba, accessible to almost every
+  contributor
+- It's fast (typically >= Cython, even without SIMD)
+- Produced binaries are much smaller than those from Cython
+- Pythran itself is easy to contribute to, and has responsive maintainer
+- Build system integration is easy(-ish)
+
+----
+
+Current Usage in SciPy
+======================
+
+- Largest extension: `RBFInterpolator`
+- Several small extensions: TODO names
+- More PRs in progress.
 
 ----
 
 Limitation wrt. SciPy
 =====================
 
-SG: @Ralf?
+Still gaps in functionality - not all of NumPy covered:
+
+- `numpy.random`
+- APIs with too much "dynamic" behavior
+- Can only support regular numerical dtypes (so no `object`)
+- There is no "escape hatch" - if something is not supported, it must be
+  implemented in Pythran itself first
+- No threading - OpenMP is forbidden in SciPy (see https://github.com/scipy/scipy/pull/13576, went with Cython there)
+- Portability TBD - waiting for more feedback on exotic platforms (:wave: Debian)
+- Extra constraint on Windows: must build with ``clang-cl``
 
 ----
 
 Integration Status
 ==================
 
-SG: @Ralf?
+Currently Pythran is:
 
-----
+- **enabled** by default in the SciPy build
+- still an **optional** dependency (to disable: ``export SCIPY_USE_PYTHRAN=0``)
 
-Migration Feedback
-==================
+Lessons from the recent SciPy ``1.7.0`` release:
 
-- Several Pythran releases have been requested to fix distutils integration
-  - native code + multiple platform = <3
 - Portability issues on AIX
-- Windows's extra requirements: clang-cl
+- Status with PyPy unclear (PyPy has other issues that need resolving first)
+- Other than that, mostly smooth sailing
+
+Note:
+
+- Several Pythran releases were needed to fix distutils integration
+  - native code + multiple platform = <3
 
 ----
 
@@ -221,3 +269,9 @@ Conclusion
 ==========
 
 Let's pretend we're smart
+
+- Pythran will likely become a hard build dependency for or after SciPy 1.8.0
+- SciPy contributors like Pythran
+- Question: can we somehow combine it with CuPy's Python-to-CUDA JIT
+  transpiler? It emits C++ code too, so we could get fast CPU + GPU code like
+  that.
