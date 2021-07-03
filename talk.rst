@@ -8,7 +8,7 @@
 Intro
 =====
 
-Scipy & Pythran
+SciPy & Pythran
 
 Ralf Gommers & Serge Guelton
 
@@ -18,7 +18,7 @@ A packager's choice
 ===================
 
 >>> performant library
-<<< easiy to deploy
+<<< easy to deploy
 
 --- native code
 +++ compatible with PyPI
@@ -46,10 +46,10 @@ Lower the maintenance cost
 
 Looking for a tool which:
 
-- take pure Python code as input
-- understands Numpy high-level constructs
-- deliver performance
-- without much runtime dependencies
+- takes pure Python code as input
+- understands NumPy high-level constructs
+- delivers performance
+- without many runtime dependencies
 
 ----
 
@@ -62,7 +62,7 @@ Cython is a **great** tool
 - great for gluing existing native code/library with Python
 - good portability, no runtime requirements
 
-- but still has a non-neglectible learning curve
+- but still has a non-negligible learning curve
 - tends to be closer to C than Python when performance matters
 
 ----
@@ -70,10 +70,10 @@ Cython is a **great** tool
 The Pythran Approach
 ====================
 
-Keep input code portable and High-Level
+Keep input code portable and high-level
 
 - Pure Python
-- Using Numpy idioms
+- Using NumPy idioms
 
 But still
 
@@ -81,7 +81,7 @@ But still
 
 ----
 
-A Typical Scipy Kernel
+A Typical SciPy Kernel
 ======================
 
     #pythran export _max_len_seq_inner(intp[], int8[], int, int, int8[])
@@ -103,10 +103,10 @@ A Typical Scipy Kernel
 
 ----
 
-Anatomy of a Scipy Kernel
+Anatomy of a SciPy Kernel
 =========================
 
-- Uses Numpy: ``import numpy as np``
+- Uses NumPy: ``import numpy as np``
 - Explicit looping: ``for i in range(length):``
 - Explicit indexing: ``state[(taps[ti] + idx) % nbits]``
 - High-Level idiom: ``np.roll(state, -idx, axis=0)``
@@ -155,6 +155,7 @@ Distutils Playground
     setup(...,
           ext_modules=[PythranExtension("mymodule", ["mymodule.py"])],
           cmdclass={"build_ext": PythranBuildExt})
+
 ----
 
 Benefits for SciPy
@@ -192,7 +193,7 @@ Migration Feedback
 GSoC Student: Xingyu-Liu
 ------------------------
 
-Crawling in Scipy's code base, looking for kernel to benchmark and convert
+Crawling in SciPy's code base, looking for kernel to benchmark and convert
 
 Read the log of her journey:
 
@@ -211,7 +212,7 @@ Discussion
 - compiling with ``-fopenmp`` and adding openmp annotation at the expense of
   portability (again)
 
-- Linux, windows and OSX portability
+- Linux, Windows and macOS portability
 
 ----
 
