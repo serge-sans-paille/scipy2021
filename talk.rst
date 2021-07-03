@@ -28,7 +28,8 @@ A packager's choice
 How SciPy is Built
 ==================
 
-SG: @ralf instert cool image here
+.. image:: SciPy_build_dependency_graph_with_Pythran.png
+    :height: 600px
 
 ----
 
