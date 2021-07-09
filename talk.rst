@@ -53,7 +53,7 @@ How SciPy is Written
 
 ----
 
-Lower the maintenance cost
+Lower the Maintenance Cost
 ==========================
 
 Looking for a tool which:
@@ -77,11 +77,27 @@ Cython is a **great** tool
 - but still has a non-negligible learning curve
 - tends to be closer to C than Python when performance matters
 
+----
+
+What About Numba Then?
+======================
+
+Numba is a **great** tool
+
+- Just-in-Time compilation
+- GPU support
+- Pure Python syntax
+
+- but it has more runtime dependencies
+- tends to require lower-level programming
+
 
 ..
   @SG we should mention Numba. How about reusing the table from
   https://fluiddyn.netlify.app/transonic-vision.html#Overall-comparison-between-Cython,-Numba-and-Pythran
   ?
+  @RG: I added a section on numba, and I'm fine to reuse that table as a
+  concluding slide on these aspects
 
 ----
 
@@ -197,7 +213,17 @@ Current Usage in SciPy
 ======================
 
 - Largest extension: `RBFInterpolator`
-- Several small extensions: TODO names
+- Several small extensions:
+
+  .. code-block:: shell
+
+    $ git grep -l  '#pythran'
+    scipy/optimize/_group_columns.py
+    scipy/signal/_max_len_seq_inner.py
+    scipy/signal/_spectral.py
+    scipy/stats/_hypotests_pythran.py
+
+
 - More PRs in progress.
 
 ----
@@ -275,3 +301,5 @@ Let's pretend we're smart
 - Question: can we somehow combine it with CuPy's Python-to-CUDA JIT
   transpiler? It emits C++ code too, so we could get fast CPU + GPU code like
   that.
+
+.. SG: that's a bold move ;-)
