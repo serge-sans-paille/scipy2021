@@ -242,6 +242,26 @@ Still gaps in functionality - not all of NumPy covered:
 - Portability TBD - waiting for more feedback on exotic platforms (:wave: Debian)
 - Extra constraint on Windows: must build with ``clang-cl``
 
+
+----
+
+Circular Argument
+=================
+
+1. Scipy depends on Pythran
+2. Pythran uses introspection to optimize some functions
+3. Pythran knows about some ``scipy.special`` functions
+4. ``(2.) and (3.) => Pythran depends on Scipy``
+5. ``(1.) and (4.) => Scipy depends on Scipy``
+
+And more recently
+
+1. Scipy depends on Pythran
+1. Pythran depends on Networkx
+2. Networkx depends on Scipy
+3. ``(1.) and (2.) and (3.) => Scipy depends on Scipy``
+
+
 ----
 
 Integration Status
