@@ -8,60 +8,110 @@
 Intro
 =====
 
-SciPy & Pythran
+Building SciPy kernels with Pythran
 
-Ralf Gommers & Serge Guelton
+- Ralf Gommers (SciPy maintainer, Quansight Labs)
+- Serge Guelton (Pythran author)
 
-----
-
-A packager's choice
-===================
-
-::
-
-    >>> performant library
-    <<< easy to deploy
-
-    --- native code
-    +++ compatible with PyPI
+.. RG: explain here in 10 seconds what Pythran is; no need to explain SciPy
 
 ----
 
-How SciPy is Built
+The goal for SciPy
 ==================
 
-.. image:: SciPy_build_dependency_graph_with_Pythran.png
-    :height: 600px
+SciPy contains algorithmic code. It needs to be fast. Approaches:
 
-..
-  RG: I want to talk here about build-time vs. runtime dependencies. It depends
-  on where you are in the stack. The lower you go, the more you want to avoid
-  runtime dependencies. On the other hand, if you go up in the stack to
-  packages that do not yet have build-time dependencies, adding Pythran (or
-  Cython) is very costly - that is where Numba makes sense (e.g. ship a single
-  pure Python wheel vs. needing to ship ~20).
+- Python: for the glue, and non critical parts
+- Cython: for critical parts
+- Fortran 77: for very old critical parts
+- C, C++: for ultra critical parts :-)
+
+*Our goal: make it easier to write fast SciPy kernels!*
 
 ----
 
-How SciPy is Written
+The Pythran Approach
 ====================
 
-- ``.py``: for the glue, and non critical parts
-- ``.pyx``: for critical parts
-- ``.f77``: for very old critical parts
-- ``.c`` /``.cpp``: for ultra critical parts :-)
-
-----
-
-Lower the Maintenance Cost
-==========================
-
-Looking for a tool which:
+Keep input code portable and high-level:
 
 - takes pure Python code as input
 - understands NumPy high-level constructs
-- delivers performance
-- without (m)any runtime dependencies
+- delivers performance *by transpiling to C++*
+
+But still
+
+- efficient explicit looping in Python
+- and without any runtime dependencies!
+
+----
+
+A typical Pythran Kernel for SciPy
+==================================
+
+.. code:: python
+
+    #pythran export _max_len_seq_inner(intp[], int8[], int, int, int8[])
+    def _max_len_seq_inner(taps, state, nbits, length, seq):
+        n_taps = taps.shape[0]
+        idx = 0
+        for i in range(length):
+            feedback = state[idx]
+            seq[i] = feedback
+            for ti in range(n_taps):
+                feedback ^= state[(taps[ti] + idx) % nbits]
+            state[idx] = feedback
+            idx = (idx + 1) % nbits
+        return np.roll(state, -idx, axis=0)
+
+----
+
+Anatomy of a SciPy Kernel
+=========================
+
+- Uses NumPy: ``import numpy as np``
+- Explicit looping: ``for i in range(length):``
+- Explicit indexing: ``state[(taps[ti] + idx) % nbits]``
+- High-Level idiom: ``np.roll(state, -idx, axis=0)``
+
+⇒ Interleaving low-level and high-level abstractions
+
+.. RG: we can merge this with the slide before (in Google Slides)
+
+----
+
+Works in a Jupyter notebook
+===========================
+
+.. code:: python
+
+    %%pythran
+    #pythran export _max_len_seq_inner(intp[], int8[], int, int, int8[])
+    def _max_len_seq_inner(taps, state, nbits, length, seq):
+        n_taps = taps.shape[0]
+        # ...
+        return np.roll(state, -idx, axis=0)
+
+----
+
+Easy build system integration
+=============================
+
+.. code:: python
+
+    from distutils.core import setup
+    from pythran.dist import PythranExtension, PythranBuildExt
+
+    setup(...,
+          ext_modules=[PythranExtension("mymodule", ["mymodule.py"])],
+          cmdclass={"build_ext": PythranBuildExt})
+
+Or precompile to C++ to use with any build system:
+
+.. code:: bash
+
+   $ pythran -E mykernel.py -o mykernel.cpp
 
 ----
 
@@ -101,111 +151,42 @@ Numba is a **great** tool
 
 ----
 
-The Pythran Approach
-====================
+Comparing Cython, Numba and Pythran
+===================================
 
-Keep input code portable and high-level
-
-- Pure Python
-- Using NumPy idioms
-
-But still
-
-- Efficient explicit looping
+TODO RG: add table
 
 ----
 
-A Typical SciPy Kernel
-======================
 
-    #pythran export _max_len_seq_inner(intp[], int8[], int, int, int8[])
+SciPy build-time and runtime dependencies
+=========================================
 
-.. code:: python
-
-    import numpy as np
-    def _max_len_seq_inner(taps, state, nbits, length, seq):
-        n_taps = taps.shape[0]
-        idx = 0
-        for i in range(length):
-            feedback = state[idx]
-            seq[i] = feedback
-            for ti in range(n_taps):
-                feedback ^= state[(taps[ti] + idx) % nbits]
-            state[idx] = feedback
-            idx = (idx + 1) % nbits
-        return np.roll(state, -idx, axis=0)
-
-----
-
-Anatomy of a SciPy Kernel
-=========================
-
-- Uses NumPy: ``import numpy as np``
-- Explicit looping: ``for i in range(length):``
-- Explicit indexing: ``state[(taps[ti] + idx) % nbits]``
-- High-Level idiom: ``np.roll(state, -idx, axis=0)``
-
-⇒ Interleaving low-level and high-level abstractions
-
-----
-
-Pythran Conversion
-==================
-
-
-.. code:: shell
-
-    $ sed -i -e '1 i #pythran export _max_len_seq_inner(intp[], int8[], int, int, int8[])' kernel.py
-    $ pythran kernel.py
-
-----
-
-Notebook Playground
-===================
-
-.. code:: python
-
-    %%pythran
-    #pythran export _max_len_seq_inner(intp[], int8[], int, int, int8[])
-    def _max_len_seq_inner(taps, state, nbits, length, seq):
-        n_taps = taps.shape[0]
-        # ...
-        return np.roll(state, -idx, axis=0)
-
-----
-
-Distutils Playground
-====================
-
-.. code:: python
-
-    from distutils.core import setup
-
-    # These two lines are required to be able to use pythran in the setup.py
-    import setuptools
-    setuptools.dist.Distribution(dict(setup_requires='pythran'))
-
-    from pythran.dist import PythranExtension, PythranBuildExt
-    setup(...,
-          ext_modules=[PythranExtension("mymodule", ["mymodule.py"])],
-          cmdclass={"build_ext": PythranBuildExt})
+.. image:: SciPy_build_dependency_graph_with_Pythran.png
+    :height: 600px
 
 ..
-  RG: if we leave this in, I will want to mention Meson:)
+  RG: I want to talk here about build-time vs. runtime dependencies. It depends
+  on where you are in the stack. The lower you go, the more you want to avoid
+  runtime dependencies. On the other hand, if you go up in the stack to
+  packages that do not yet have build-time dependencies, adding Pythran (or
+  Cython) is very costly - that is where Numba makes sense (e.g. ship a single
+  pure Python wheel vs. needing to ship ~20).
 
 ----
 
-Benefits for SciPy
-==================
+When do I use which tool?
+=========================
 
-Key benefit: **easiest way to write fast kernels**
+Our advice:
 
-- Developer experience almost as good as with Numba, accessible to almost every
-  contributor
-- It's fast (typically >= Cython, even without SIMD)
-- Produced binaries are much smaller than those from Cython
-- Pythran itself is easy to contribute to, and has responsive maintainer
-- Build system integration is easy(-ish)
+- for higher-level, pure Python packages: use Numba
+
+Once you have compiled code in your package:
+
+- use Pythran for standalone kernels
+- use Cython for binding C/C++ code, or if you need to interact with the
+  Python or NumPy C API
 
 ----
 
@@ -228,6 +209,38 @@ Current Usage in SciPy
 
 ----
 
+GSoC student: Xingyu Liu
+------------------------
+
+Xingyu is going through SciPy's code base, looking for kernels to benchmark and
+accelerate:
+
+- ``stats.binned_statistic_dd``: 2-30x
+- ``stats.somersd``: 4-20x
+- ``spatial.SphericalVoronoi.sort_vertices_of_regions``: 3x
+
+And more to come - read the log of her journey:
+
+https://blogs.python-gsoc.org/en/xingyu-lius-blog/
+
+----
+
+
+Benefits for SciPy
+==================
+
+Key benefit: **easiest way to write fast kernels**
+
+- Developer experience about as good as with Numba, accessible to almost every
+  contributor
+- It's fast (typically >= Cython, even without SIMD)
+- Produced binaries are much smaller than those from Cython
+- Pythran itself is easy to contribute to, and has a responsive maintainer
+- Build system integration is easy(-ish)
+
+----
+
+
 Limitation wrt. SciPy
 =====================
 
@@ -235,31 +248,29 @@ Still gaps in functionality - not all of NumPy covered:
 
 - `numpy.random`
 - APIs with too much "dynamic" behavior
-- Can only support regular numerical dtypes (so no `object`)
 - There is no "escape hatch" - if something is not supported, it must be
   implemented in Pythran itself first
 - No threading - OpenMP is forbidden in SciPy (see https://github.com/scipy/scipy/pull/13576, went with Cython there)
-- Portability TBD - waiting for more feedback on exotic platforms (:wave: Debian)
 - Extra constraint on Windows: must build with ``clang-cl``
 
 
 ----
 
-Circular Argument
-=================
+A recent hiccup: circular dependencies
+======================================
 
-1. Scipy depends on Pythran
+1. SciPy depends on Pythran
 2. Pythran uses introspection to optimize some functions
 3. Pythran knows about some ``scipy.special`` functions
-4. ``(2.) and (3.) => Pythran depends on Scipy``
-5. ``(1.) and (4.) => Scipy depends on Scipy``
+4. ``(2.) and (3.) => Pythran depends on SciPy``
+5. ``(1.) and (4.) => SciPy depends on SciPy``
 
 And more recently
 
-1. Scipy depends on Pythran
-1. Pythran depends on Networkx
-2. Networkx depends on Scipy
-3. ``(1.) and (2.) and (3.) => Scipy depends on Scipy``
+1. SciPy depends on Pythran
+2. Pythran depends on Networkx
+3. Networkx depends on SciPy
+4. ``(1.) and (2.) and (3.) => SciPy depends on SciPy``
 
 
 ----
@@ -285,16 +296,50 @@ Note:
 
 ----
 
-GSoC Student: Xingyu-Liu
-------------------------
+Conclusion
+==========
 
-Crawling in SciPy's code base, looking for kernel to benchmark and convert
-
-Read the log of her journey:
-
-https://blogs.python-gsoc.org/en/xingyu-lius-blog/
+- SciPy contributors like Pythran
+- Pythran is indeed an easier way to write fast kernels
+- Pythran will likely become a hard build dependency for or after SciPy 1.8.0
 
 
+Bonus question: can we combine Pythran with CuPy's Python-to-CUDA JIT? It emits
+C++ code too, so we could get fast CPU + GPU code like that.
+
+.. SG: that's a bold move ;-)
+
+
+----
+
+Backup slides
+=============
+
+Stuff that doesn't fit in
+
+----
+
+A packager's choice
+===================
+
+::
+
+    >>> performant library
+    <<< easy to deploy
+
+    --- native code
+    +++ compatible with PyPI
+
+----
+
+Pythran Conversion
+==================
+
+
+.. code:: shell
+
+    $ sed -i -e '1 i #pythran export _max_len_seq_inner(intp[], int8[], int, int, int8[])' kernel.py
+    $ pythran kernel.py
 
 ----
 
@@ -309,17 +354,3 @@ Discussion
 
 - Linux, Windows and macOS portability
 
-----
-
-Conclusion
-==========
-
-Let's pretend we're smart
-
-- Pythran will likely become a hard build dependency for or after SciPy 1.8.0
-- SciPy contributors like Pythran
-- Question: can we somehow combine it with CuPy's Python-to-CUDA JIT
-  transpiler? It emits C++ code too, so we could get fast CPU + GPU code like
-  that.
-
-.. SG: that's a bold move ;-)
