@@ -78,6 +78,7 @@ Anatomy of a SciPy Kernel
 ⇒ Interleaving low-level and high-level abstractions
 
 .. RG: we can merge this with the slide before (in Google Slides)
+.. SG: ok, easier to follow for the audience
 
 ----
 
@@ -121,7 +122,7 @@ Isn't Cython Enough?
 Cython is a **great** tool
 
 - incremental conversion / mixed mode
-- great for gluing existing native code/library with Python
+- great for gluing existing native code / library with Python
 - good portability, no runtime requirements
 
 - but still has a non-negligible learning curve
